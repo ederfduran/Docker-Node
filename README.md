@@ -1,6 +1,6 @@
 # Docker-Node 
 
-##Docker File
+## Docker File
 * Use `COPY`instead of `ADD` to copy files into the container. ADD can do a lot more stuff that just copy files such as downloading files from internet, so don't use `ADD` unless you're sure you need it.
 * use npm/yarn to install during build. Whaterever you use make sure you clean it up (ex using `npm cache clean --force`) so your image is small as possible.
 * Use node in `CMD`, not npm. if node is executed by npm it will run as a subprocess of npm and this will add some complexity and unnecesary layer. Another reason is npm doesn't work well as an init or PID 1 process.
