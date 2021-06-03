@@ -57,3 +57,42 @@ COPY . .
 ```
 In that way we avoid to re install npm packages all the time we have a code change, meaning that we will only execute npm install when there is a change in package.json.(remember layers nature when building image).
 * Put your os specific install at top of the dockerfile and all installations at once.(always pin versions)
+
+
+## Node Process Management in Containers
+* No need for nodemon, forever, or pm2 on server because docker does a great job at managing processes. Docker manages app start, stop, restart and healthcheck.
+* As you know, Node.js is a single threaded language which in background uses multiple threads to execute asynchronous code. Docker manages multiple "replicas" to harness vcpus in your container.
+* One npm/node problem : They don't listen for proper shutdown signal by default.
+
+### PD1 Process (Running Node as main process)
+* PD1 (Init Process) is the first process in a system(or container). In linux in means that this process have a couple responsabilities such as:
+- handle zombie processes (Process that don't have a parent). Init process should clean up those processes.
+- pass signal to sub-process.
+* Every process except PD1 is created by another process invoking the fork() system call.
+* Zombie process is not an issue with Node.
+
+### CMD For healthy shutdown
+* Shutdown is about signals comming from docker, and docker gets those either from itself or from OS(ctrl+c).
+* Signals to stop are SIGINT(ctl+c) / SIGTERM(docker container stop) / SIGKILL.
+* SIGINT and SIGTERM allow for  grateful stop.
+* SIGKIll is used by default by docker after some seconds in case there is no response for SIGINT or SIGTERM
+* npm doesn't respond to SIGINT/SIGTERM , that why it is not a good idea uset to start node in production environment.
+* node doesn't respond by default to these signals but **it can be done with code** in case you want to do some sort of cleanup before finish up the process.
+```sh
+CMD ["node", "app.js"] instead of CMD ["npm", "start"]
+```
+### Proper Node Shutdown Options
+* Temporal solution -> Use `--init` in docker run command. The `--init` flag inserts a tiny init-process into the container as the main process to make sure that any app will be wrapped  by his process and make  sure it properly handles terminations. This not propetly handles your node connections but at least will respond inmediatly to any `ctr+c`or any other termination method.
+```sh
+docker run --init -d nodeapp
+```
+* Permanent Workaround -> Adding tini manually to your image. you not need to use `--init` instead you specify tini in your `Dockerfile`.
+```sh
+RUN apk add --no-cache tini
+# Entry point will run first and will wrap the CMD . This is what docker is doing in the background when include
+# --init 
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "./bin/www"]
+```
+* Production -> Your app captures SIGINT for proper exit. look into [`sample.js`](2-graceful-shutdown/sample.js).
+
