@@ -16,6 +16,6 @@ RUN npm install && npm cache clean --force
 
 COPY . .
 
-ENTRYPOINT ["/sbin/tini", "--"]
+#ENTRYPOINT ["/sbin/tini", "--"]
 
 CMD ["node", "app.js"]
